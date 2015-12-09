@@ -466,7 +466,7 @@ public:
     /// to the Serial device if RH_HAVE_SERIAL is defined for the current platform
     /// For debugging purposes only.
     /// \return true on success
-    bool printRegisters();
+    bool       printRegisters();
 
     /// Sets all the registered required to configure the data modem in the RF95/96/97/98, including the bandwidth, 
     /// spreading factor etc. You can use this to configure the modem with custom configurations if none of the 
@@ -552,6 +552,9 @@ public:
     /// Caution: there is a time penalty as the radio takes a finite time to wake from sleep mode.
     /// \return true if sleep mode was successfully entered.
     virtual bool    sleep();
+	
+	int16_t        getRSSI();
+
 
 protected:
     /// This is a low level function to handle the interrupts for one instance of RH_RF95.

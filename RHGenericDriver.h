@@ -209,6 +209,8 @@ public:
     /// packets successfully transmitted (though not necessarily received by the destination)
     /// \return The number of packets successfully transmitted
     uint16_t       txGood();
+	
+	int8_t         lastSnr();
 
 protected:
 
@@ -246,7 +248,10 @@ protected:
     uint8_t             _txHeaderFlags;
 
     /// The value of the last received RSSI value, in some transport specific units
-    volatile int8_t     _lastRssi;
+    volatile int8_t    _lastRssi;
+	volatile float      _lastSnr;
+
+	volatile int16_t    _RSSI;
 
     /// Count of the number of bad messages (eg bad checksum etc) received
     volatile uint16_t   _rxBad;

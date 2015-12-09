@@ -109,9 +109,10 @@ bool RH_RF95::init()
     setFrequency(434.0);
     // Lowish power
     //setTxPower(13);
-
 	setTxPower(20);
-
+	
+	// RegOcp
+	spiWrite(0x0B, 0x3B);
 	
     return true;
 }
@@ -143,8 +144,23 @@ void RH_RF95::handleInterrupt()
 	// Remember the RSSI of this packet
 	// this is according to the doc, but is it really correct?
 	// weakest receiveable signals are reported RSSI at about -66
-	_lastRssi = spiRead(RH_RF95_REG_1A_PKT_RSSI_VALUE) - 137;
+	_lastRssi = -137 + (uint8_t) spiRead(RH_RF95_REG_1A_PKT_RSSI_VALUE);
 
+	byte snr;
+	snr = spiRead(0x19);
+	if( snr & 0x80 ) // The SNR sign bit is 1
+	  {
+		  // 2's complement -> Invert and divide by 4
+		  snr = ( ( ~snr + 1 ) & 0xFF ) >> 2;
+          _lastSnr = -snr;
+      }
+      else
+      {
+		  // Divide by 4
+		  //Serial.println(snr, BIN);
+		  _lastSnr = ( snr & 0xFF ) >> 2;
+	  }
+	
 	// We have received a message.
 	validateRxBuf(); 
 	if (_rxBufValid)
@@ -157,6 +173,24 @@ void RH_RF95::handleInterrupt()
     }
     
     spiWrite(RH_RF95_REG_12_IRQ_FLAGS, 0xff); // Clear all IRQ flags
+}
+
+int16_t RH_RF95::getRSSI() {
+	int16_t rssi_mean = 0;
+    uint8_t total = 50;
+    for(uint8_t i = 0; i < total; i++) {
+		// -137 is OFFSET_RSSI
+        _RSSI = -137 + spiRead(0x1B);
+        rssi_mean += _RSSI;         
+    }
+ 
+    rssi_mean = rssi_mean / total;  
+    _RSSI = rssi_mean;
+
+	//Serial.print(F("## Current RSSI value is "));
+	//Serial.print(_RSSI, DEC);
+	//Serial.println(F("dBm ##"));
+	return _RSSI;
 }
 
 // These are low level functions that call the interrupt handler for the correct
@@ -256,16 +290,14 @@ bool RH_RF95::send(const uint8_t* data, uint8_t len)
 
 bool RH_RF95::printRegisters()
 {
-    uint8_t registers[] = { 0x00, 0x01, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x014, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27};
-
     uint8_t i;
-    for (i = 0; i < sizeof(registers); i++)
+    for (i = 0; i < 67; i++)
     {
-	Serial.print(registers[i], HEX);
+	Serial.print(i, HEX);
 	Serial.print(": ");
-	Serial.print(spiRead(registers[i]), HEX);
+	Serial.print(spiRead(i), HEX);
 	Serial.print(": ");
-	Serial.println(spiRead(registers[i]), BIN);
+	Serial.println(spiRead(i), BIN);
     }
     return true;
 }
@@ -299,6 +331,7 @@ bool RH_RF95::sleep()
 {
     if (_mode != RHModeSleep)
     {
+	Serial.println("RFM goes to sleep.");
 	spiWrite(RH_RF95_REG_01_OP_MODE, RH_RF95_MODE_SLEEP);
 	_mode = RHModeSleep;
     }
@@ -352,6 +385,9 @@ void RH_RF95::setTxPower(int8_t power)
     // but OutputPower claims it would be 17dBm.
     // My measurements show 20dBm is correct
     spiWrite(RH_RF95_REG_09_PA_CONFIG, RH_RF95_PA_SELECT | (power-5));
+    Serial.print("TX power set to ");
+	Serial.print(power);
+	Serial.println("dBm");
 }
 
 // Sets registers from a canned modem configuration structure

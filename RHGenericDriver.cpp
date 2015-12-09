@@ -123,6 +123,11 @@ int8_t RHGenericDriver::lastRssi()
     return _lastRssi;
 }
 
+int8_t RHGenericDriver::lastSnr()
+{
+    return _lastSnr;
+}
+
 RHGenericDriver::RHMode  RHGenericDriver::mode()
 {
     return _mode;
@@ -144,18 +149,14 @@ void RHGenericDriver::printBuffer(const char* prompt, const uint8_t* buf, uint8_
     uint8_t i;
 
 #ifdef RH_HAVE_SERIAL
-    Serial.println(prompt);
+    Serial.print(prompt);
     for (i = 0; i < len; i++)
     {
-	if (i % 16 == 15)
-	    Serial.println(buf[i], HEX);
-	else
-	{
-	    Serial.print(buf[i], HEX);
-	    Serial.print(' ');
+		char tmp[5];
+		sprintf(tmp, "%.2x", buf[i]);
+	    Serial.print(tmp);
+		Serial.print(" ");
 	}
-    }
-    Serial.println("");
 #endif
 }
 
