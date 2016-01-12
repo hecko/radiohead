@@ -101,15 +101,15 @@ bool RH_RF95::init()
     setModeIdle();
 
     // Set up default configuration
-    // No Sync Words in LORA mode.
+    // Sync Word is not supported by the chip in LORA mode.
 //    setModemConfig(Bw125Cr45Sf128); // Radio default
     setModemConfig(Bw125Cr48Sf4096); // slow and reliable?
     setPreambleLength(8); // Default is 8
     // An innocuous ISM frequency, same as RF22's
     setFrequency(434.0);
     // Lowish power
-    //setTxPower(13);
-	setTxPower(20);
+    setTxPower(13);
+	// setTxPower(20);
 	
 	// RegOcp
 	spiWrite(0x0B, 0x3B);
@@ -125,51 +125,50 @@ bool RH_RF95::init()
 void RH_RF95::handleInterrupt()
 {
     // Read the interrupt register
+	Serial.println("debug|Interrupt!");
     uint8_t irq_flags = spiRead(RH_RF95_REG_12_IRQ_FLAGS);
-    if (_mode == RHModeRx && irq_flags & (RH_RF95_RX_TIMEOUT | RH_RF95_PAYLOAD_CRC_ERROR))
-    {
-	_rxBad++;
-    }
-    else if (_mode == RHModeRx && irq_flags & RH_RF95_RX_DONE)
-    {
-	// Have received a packet
-	uint8_t len = spiRead(RH_RF95_REG_13_RX_NB_BYTES);
-
-	// Reset the fifo read ptr to the beginning of the packet
-	spiWrite(RH_RF95_REG_0D_FIFO_ADDR_PTR, spiRead(RH_RF95_REG_10_FIFO_RX_CURRENT_ADDR));
-	spiBurstRead(RH_RF95_REG_00_FIFO, _buf, len);
-	_bufLen = len;
-	spiWrite(RH_RF95_REG_12_IRQ_FLAGS, 0xff); // Clear all IRQ flags
-
-	// Remember the RSSI of this packet
-	// this is according to the doc, but is it really correct?
-	// weakest receiveable signals are reported RSSI at about -66
-	_lastRssi = -137 + (uint8_t) spiRead(RH_RF95_REG_1A_PKT_RSSI_VALUE);
-
-	byte snr;
-	snr = spiRead(0x19);
-	if( snr & 0x80 ) // The SNR sign bit is 1
-	  {
-		  // 2's complement -> Invert and divide by 4
-		  snr = ( ( ~snr + 1 ) & 0xFF ) >> 2;
-          _lastSnr = -snr;
-      }
-      else
-      {
-		  // Divide by 4
-		  //Serial.println(snr, BIN);
-		  _lastSnr = ( snr & 0xFF ) >> 2;
-	  }
 	
-	// We have received a message.
-	validateRxBuf(); 
-	if (_rxBufValid)
-	    setModeIdle(); // Got one 
-    }
-    else if (_mode == RHModeTx && irq_flags & RH_RF95_TX_DONE)
-    {
-	_txGood++;
-	setModeIdle();
+    if (_mode == RHModeRx && irq_flags & (RH_RF95_RX_TIMEOUT | RH_RF95_PAYLOAD_CRC_ERROR)) {
+		Serial.print("debug|Bad packet received - irq_flags: ");
+		Serial.println(irq_flags, BIN);
+	    _rxBad++;
+    } else if (_mode == RHModeRx && irq_flags & RH_RF95_RX_DONE) {
+	    // Have received a packet
+        uint8_t len = spiRead(RH_RF95_REG_13_RX_NB_BYTES);
+
+	    // Reset the fifo read ptr to the beginning of the packet
+	    spiWrite(RH_RF95_REG_0D_FIFO_ADDR_PTR, spiRead(RH_RF95_REG_10_FIFO_RX_CURRENT_ADDR));
+	    spiBurstRead(RH_RF95_REG_00_FIFO, _buf, len);
+	    _bufLen = len;
+	    spiWrite(RH_RF95_REG_12_IRQ_FLAGS, 0xff); // Clear all IRQ flags
+
+	    // Remember the RSSI of this packet
+	    // this is according to the doc, but is it really correct?
+	    // weakest receiveable signals are reported RSSI at about -94
+	    _lastRssi = -137 + (uint8_t) spiRead(RH_RF95_REG_1A_PKT_RSSI_VALUE);
+
+	    byte snr;
+	    snr = spiRead(0x19);
+		
+	    if( snr & 0x80 ) {
+			// The SNR sign bit is True
+		    // 2's complement -> Invert and divide by 4
+		    snr = ( ( ~snr + 1 ) & 0xFF ) >> 2;
+            _lastSnr = -snr;
+        } else {
+		    // Divide by 4
+		    // Serial.println(snr, BIN);
+		    _lastSnr = ( snr & 0xFF ) >> 2;
+	    }
+	
+	    // We have received a message.
+	    validateRxBuf(); 
+	    if (_rxBufValid) {
+	        setModeIdle(); // Got one 
+	    }
+    } else if (_mode == RHModeTx && irq_flags & RH_RF95_TX_DONE) {
+	    _txGood++;
+	    setModeIdle();
     }
     
     spiWrite(RH_RF95_REG_12_IRQ_FLAGS, 0xff); // Clear all IRQ flags
@@ -215,26 +214,31 @@ void RH_RF95::isr2()
 // Check whether the latest received message is complete and uncorrupted
 void RH_RF95::validateRxBuf()
 {
+	// skip this step in a polite way
+    _rxGood++;
+	_rxBufValid = true;
+	return;
+	
     if (_bufLen < 4)
 	return; // Too short to be a real message
+
     // Extract the 4 headers
     _rxHeaderTo    = _buf[0];
     _rxHeaderFrom  = _buf[1];
     _rxHeaderId    = _buf[2];
     _rxHeaderFlags = _buf[3];
-    if (_promiscuous ||
-	_rxHeaderTo == _thisAddress ||
-	_rxHeaderTo == RH_BROADCAST_ADDRESS)
-    {
-	_rxGood++;
-	_rxBufValid = true;
+	
+    if (_promiscuous || _rxHeaderTo == _thisAddress || _rxHeaderTo == RH_BROADCAST_ADDRESS) {
+	    _rxGood++;
+	    _rxBufValid = true;
     }
 }
 
 bool RH_RF95::available()
 {
-    if (_mode == RHModeTx)
-	return false;
+    if (_mode == RHModeTx) {
+	    return false;
+	}
     setModeRx();
     return _rxBufValid; // Will be set by the interrupt handler when a good message is received
 }
@@ -340,11 +344,10 @@ bool RH_RF95::sleep()
 
 void RH_RF95::setModeRx()
 {
-    if (_mode != RHModeRx)
-    {
-	spiWrite(RH_RF95_REG_01_OP_MODE, RH_RF95_MODE_RXCONTINUOUS);
-	spiWrite(RH_RF95_REG_40_DIO_MAPPING1, 0x00); // Interrupt on RxDone
-	_mode = RHModeRx;
+    if (_mode != RHModeRx) {
+	    spiWrite(RH_RF95_REG_01_OP_MODE, RH_RF95_MODE_RXCONTINUOUS);
+	    spiWrite(RH_RF95_REG_40_DIO_MAPPING1, 0x00); // Interrupt on RxDone
+	    _mode = RHModeRx;
     }
 }
 
