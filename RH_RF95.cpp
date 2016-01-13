@@ -125,22 +125,27 @@ bool RH_RF95::init()
 void RH_RF95::handleInterrupt()
 {
     // Read the interrupt register
-	Serial.println("debug|Interrupt!");
+	Serial.println("debug|Interrupt from RFM!");
     uint8_t irq_flags = spiRead(RH_RF95_REG_12_IRQ_FLAGS);
 	
     if (_mode == RHModeRx && irq_flags & (RH_RF95_RX_TIMEOUT | RH_RF95_PAYLOAD_CRC_ERROR)) {
 		Serial.print("debug|Bad packet received - irq_flags: ");
 		Serial.println(irq_flags, BIN);
 	    _rxBad++;
-    } else if (_mode == RHModeRx && irq_flags & RH_RF95_RX_DONE) {
+		// after this point, we know that the data in the FIFO will be corrupted, but we still want to know
+		// whats in there
+    }
+	
+	if (_mode == RHModeRx && irq_flags & RH_RF95_RX_DONE) {
 	    // Have received a packet
         uint8_t len = spiRead(RH_RF95_REG_13_RX_NB_BYTES);
+		
+		Serial.println("debug|RX interrupt - we got some data!");
 
 	    // Reset the fifo read ptr to the beginning of the packet
 	    spiWrite(RH_RF95_REG_0D_FIFO_ADDR_PTR, spiRead(RH_RF95_REG_10_FIFO_RX_CURRENT_ADDR));
 	    spiBurstRead(RH_RF95_REG_00_FIFO, _buf, len);
 	    _bufLen = len;
-	    spiWrite(RH_RF95_REG_12_IRQ_FLAGS, 0xff); // Clear all IRQ flags
 
 	    // Remember the RSSI of this packet
 	    // this is according to the doc, but is it really correct?
@@ -165,18 +170,24 @@ void RH_RF95::handleInterrupt()
 	    validateRxBuf(); 
 	    if (_rxBufValid) {
 	        setModeIdle(); // Got one 
-	    }
+	    } else {
+			Serial.println("!!! What is this state?");
+			Serial.flush();
+		}
     } else if (_mode == RHModeTx && irq_flags & RH_RF95_TX_DONE) {
+		Serial.println("debug|TX done interrupt caught - switching into IDLE mode");
 	    _txGood++;
 	    setModeIdle();
-    }
+    } else {
+		Serial.println("Unknown interrupt handler state happened");
+	}
     
     spiWrite(RH_RF95_REG_12_IRQ_FLAGS, 0xff); // Clear all IRQ flags
 }
 
 int16_t RH_RF95::getRSSI() {
 	int16_t rssi_mean = 0;
-    uint8_t total = 50;
+    uint8_t total = 10;
     for(uint8_t i = 0; i < total; i++) {
 		// -137 is OFFSET_RSSI
         _RSSI = -137 + spiRead(0x1B);
@@ -223,10 +234,10 @@ void RH_RF95::validateRxBuf()
 	return; // Too short to be a real message
 
     // Extract the 4 headers
-    _rxHeaderTo    = _buf[0];
-    _rxHeaderFrom  = _buf[1];
-    _rxHeaderId    = _buf[2];
-    _rxHeaderFlags = _buf[3];
+    //_rxHeaderTo    = _buf[0];
+    //_rxHeaderFrom  = _buf[1];
+    //_rxHeaderId    = _buf[2];
+    //_rxHeaderFlags = _buf[3];
 	
     if (_promiscuous || _rxHeaderTo == _thisAddress || _rxHeaderTo == RH_BROADCAST_ADDRESS) {
 	    _rxGood++;
@@ -270,8 +281,9 @@ bool RH_RF95::recv(uint8_t* buf, uint8_t* len)
 
 bool RH_RF95::send(const uint8_t* data, uint8_t len)
 {
-    if (len > RH_RF95_MAX_MESSAGE_LEN)
-	return false;
+    if (len > RH_RF95_MAX_MESSAGE_LEN) {
+	    return false;
+	}
 
     waitPacketSent(); // Make sure we dont interrupt an outgoing message
     setModeIdle();
@@ -279,14 +291,15 @@ bool RH_RF95::send(const uint8_t* data, uint8_t len)
     // Position at the beginning of the FIFO
     spiWrite(RH_RF95_REG_0D_FIFO_ADDR_PTR, 0);
     // The headers
-    spiWrite(RH_RF95_REG_00_FIFO, _txHeaderTo);
-    spiWrite(RH_RF95_REG_00_FIFO, _txHeaderFrom);
-    spiWrite(RH_RF95_REG_00_FIFO, _txHeaderId);
-    spiWrite(RH_RF95_REG_00_FIFO, _txHeaderFlags);
+    //spiWrite(RH_RF95_REG_00_FIFO, _txHeaderTo);
+    //spiWrite(RH_RF95_REG_00_FIFO, _txHeaderFrom);
+    //spiWrite(RH_RF95_REG_00_FIFO, _txHeaderId);
+    //spiWrite(RH_RF95_REG_00_FIFO, _txHeaderFlags);
     // The message data
     spiBurstWrite(RH_RF95_REG_00_FIFO, data, len);
-    spiWrite(RH_RF95_REG_22_PAYLOAD_LENGTH, len + RH_RF95_HEADER_LEN);
-
+	//spiWrite(RH_RF95_REG_22_PAYLOAD_LENGTH, len + RH_RF95_HEADER_LEN);
+    spiWrite(RH_RF95_REG_22_PAYLOAD_LENGTH, len);
+	
     setModeTx(); // Start the transmitter
     // when Tx is done, interruptHandler will fire and radio mode will return to STANDBY
     return true;
@@ -333,11 +346,11 @@ void RH_RF95::setModeIdle()
 
 bool RH_RF95::sleep()
 {
-    if (_mode != RHModeSleep)
-    {
-	Serial.println("RFM goes to sleep.");
-	spiWrite(RH_RF95_REG_01_OP_MODE, RH_RF95_MODE_SLEEP);
-	_mode = RHModeSleep;
+    if (_mode != RHModeSleep) {
+	    Serial.println("RFM goes to sleep.");
+	    spiWrite(RH_RF95_REG_01_OP_MODE, RH_RF95_MODE_SLEEP);
+	    _mode = RHModeSleep;
+		Serial.flush();
     }
     return true;
 }
@@ -353,11 +366,10 @@ void RH_RF95::setModeRx()
 
 void RH_RF95::setModeTx()
 {
-    if (_mode != RHModeTx)
-    {
-	spiWrite(RH_RF95_REG_01_OP_MODE, RH_RF95_MODE_TX);
-	spiWrite(RH_RF95_REG_40_DIO_MAPPING1, 0x40); // Interrupt on TxDone
-	_mode = RHModeTx;
+    if (_mode != RHModeTx) {
+		spiWrite(RH_RF95_REG_40_DIO_MAPPING1, 0x40); // Interrupt on TxDone
+	    spiWrite(RH_RF95_REG_01_OP_MODE, RH_RF95_MODE_TX);
+	    _mode = RHModeTx;
     }
 }
 
