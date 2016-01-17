@@ -125,12 +125,12 @@ bool RH_RF95::init()
 void RH_RF95::handleInterrupt()
 {
     // Read the interrupt register
-	Serial.println("debug|Interrupt from RFM!");
+	// Serial.println("debug|Interrupt from RFM!");
     uint8_t irq_flags = spiRead(RH_RF95_REG_12_IRQ_FLAGS);
 	
     if (_mode == RHModeRx && irq_flags & (RH_RF95_RX_TIMEOUT | RH_RF95_PAYLOAD_CRC_ERROR)) {
-		Serial.print("debug|Bad packet received - irq_flags: ");
-		Serial.println(irq_flags, BIN);
+		// Serial.print("debug|Bad packet received - irq_flags: ");
+		// Serial.println(irq_flags, BIN);
 	    _rxBad++;
 		// after this point, we know that the data in the FIFO will be corrupted, but we still want to know
 		// whats in there
@@ -140,7 +140,7 @@ void RH_RF95::handleInterrupt()
 	    // Have received a packet
         uint8_t len = spiRead(RH_RF95_REG_13_RX_NB_BYTES);
 		
-		Serial.println("debug|RX interrupt - we got some data!");
+		// Serial.println("debug|RX interrupt - we got some data!");
 
 	    // Reset the fifo read ptr to the beginning of the packet
 	    spiWrite(RH_RF95_REG_0D_FIFO_ADDR_PTR, spiRead(RH_RF95_REG_10_FIFO_RX_CURRENT_ADDR));
@@ -171,15 +171,15 @@ void RH_RF95::handleInterrupt()
 	    if (_rxBufValid) {
 	        setModeIdle(); // Got one 
 	    } else {
-			Serial.println("!!! What is this state?");
-			Serial.flush();
+			// Serial.println("!!! What is this state?");
+			// Serial.flush();
 		}
     } else if (_mode == RHModeTx && irq_flags & RH_RF95_TX_DONE) {
-		Serial.println("debug|TX done interrupt caught - switching into IDLE mode");
+		// Serial.println("debug|TX done interrupt caught - switching into IDLE mode");
 	    _txGood++;
 	    setModeIdle();
     } else {
-		Serial.println("Unknown interrupt handler state happened");
+		// Serial.println("Unknown interrupt handler state happened");
 	}
     
     spiWrite(RH_RF95_REG_12_IRQ_FLAGS, 0xff); // Clear all IRQ flags
@@ -347,10 +347,10 @@ void RH_RF95::setModeIdle()
 bool RH_RF95::sleep()
 {
     if (_mode != RHModeSleep) {
-	    Serial.println("RFM goes to sleep.");
+	    // Serial.println("RFM goes to sleep.");
 	    spiWrite(RH_RF95_REG_01_OP_MODE, RH_RF95_MODE_SLEEP);
 	    _mode = RHModeSleep;
-		Serial.flush();
+		// Serial.flush();
     }
     return true;
 }
