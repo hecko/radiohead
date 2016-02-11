@@ -346,13 +346,23 @@ void RH_RF95::setModeIdle()
 
 bool RH_RF95::sleep()
 {
-    if (_mode != RHModeSleep) {
+    if (spiRead(RH_RF95_REG_01_OP_MODE) != (RH_RF95_MODE_SLEEP | RH_RF95_LONG_RANGE_MODE)) {
 	    // Serial.println("RFM goes to sleep.");
-	    spiWrite(RH_RF95_REG_01_OP_MODE, RH_RF95_MODE_SLEEP);
-	    _mode = RHModeSleep;
-		// Serial.flush();
-    }
-    return true;
+	    spiWrite(RH_RF95_REG_01_OP_MODE, RH_RF95_MODE_SLEEP | RH_RF95_LONG_RANGE_MODE);
+		delay(5);
+		if (spiRead(RH_RF95_REG_01_OP_MODE) != (RH_RF95_MODE_SLEEP | RH_RF95_LONG_RANGE_MODE)) {
+			// unable to set the sleep mode
+			return false;
+		} else {
+			// sleep mode entered
+	        _mode = RHModeSleep;
+		    return true;
+		}
+    } else {
+		// we are already in sleep mode
+		_mode = RHModeSleep;
+		return true;
+	}
 }
 
 void RH_RF95::setModeRx()
