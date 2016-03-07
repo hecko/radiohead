@@ -108,7 +108,8 @@ bool RH_RF95::init()
     // An innocuous ISM frequency, same as RF22's
     setFrequency(434.0);
     // Lowish power
-    setTxPower(13);
+	// 14 = 25mW
+    setTxPower(14);
 	// setTxPower(20);
 	
 	// RegOcp
@@ -132,8 +133,9 @@ void RH_RF95::handleInterrupt()
 		// Serial.print("debug|Bad packet received - irq_flags: ");
 		// Serial.println(irq_flags, BIN);
 	    _rxBad++;
-		// after this point, we know that the data in the FIFO will be corrupted, but we still want to know
-		// whats in there
+		spiWrite(RH_RF95_REG_12_IRQ_FLAGS, 0xff); // Clear all IRQ flags
+		return;
+		// after this point, we know that the data in the FIFO is corrupted
     }
 	
 	if (_mode == RHModeRx && irq_flags & RH_RF95_RX_DONE) {
@@ -410,9 +412,9 @@ void RH_RF95::setTxPower(int8_t power)
     // but OutputPower claims it would be 17dBm.
     // My measurements show 20dBm is correct
     spiWrite(RH_RF95_REG_09_PA_CONFIG, RH_RF95_PA_SELECT | (power-5));
-    Serial.print("TX power set to ");
-	Serial.print(power);
-	Serial.println("dBm");
+    //Serial.print("TX power set to ");
+	//Serial.print(power);
+	//Serial.println("dBm");
 }
 
 // Sets registers from a canned modem configuration structure
