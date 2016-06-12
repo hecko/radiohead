@@ -527,6 +527,14 @@ public:
     /// \return true if the selected frquency centre is within range
     bool        setFrequency(float centre);
 
+	bool        setBandWidth(float khz);
+	
+	/// set spreading factor (SF)
+	bool		setSF(int chips);
+	
+	/// set CR 5-8
+	bool		setCR(int rate);
+	
     /// If current mode is Rx or Tx changes it to Idle. If the transmitter or receiver is running, 
     /// disables them.
     void           setModeIdle();

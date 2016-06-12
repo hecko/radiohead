@@ -337,6 +337,112 @@ bool RH_RF95::setFrequency(float centre)
     return true;
 }
 
+bool RH_RF95::setSF(int chips)
+{
+	uint8_t reg_new, reg_old;
+	
+	reg_old = spiRead(RH_RF95_REG_1E_MODEM_CONFIG2);
+    reg_new = reg_old;
+	
+	// SF 7 -> 128 chips / symbol
+	if ((chips == 128) || (chips == 7)) {
+	    reg_new = reg_old << 4;
+	    reg_new = reg_new >> 4;
+		reg_new = reg_new | 0x70;
+	}
+
+	if ((chips == 1024) || (chips == 10)) {
+	    reg_new = reg_old << 4;
+	    reg_new = reg_new >> 4;
+		reg_new = reg_new | 0xA0;
+	}
+	
+	spiWrite(RH_RF95_REG_1E_MODEM_CONFIG2, reg_new);
+
+    return true;
+}
+
+bool RH_RF95::setCR(int rate)
+{
+	uint8_t reg_new, reg_old;
+	
+	reg_old = spiRead(RH_RF95_REG_1D_MODEM_CONFIG1);
+    reg_new = reg_old;
+	
+	// CR 7 -> 4/7 etc..
+	
+	if (rate == 5) {
+		reg_new = reg_old & 0xF1;
+		reg_new = reg_new | 0x02;
+	}
+
+	if (rate == 6) {
+		reg_new = reg_old & 0xF1;
+		reg_new = reg_new | 0x04;
+	}
+	
+	if (rate == 7) {
+		reg_new = reg_old & 0xF1;
+		reg_new = reg_new | 0x06;
+	}
+
+	
+    if (rate == 8) {
+		reg_new = reg_old & 0xF1;
+		reg_new = reg_new | 0x08;
+	}
+
+	
+	spiWrite(RH_RF95_REG_1D_MODEM_CONFIG1, reg_new);
+
+    return true;
+}
+
+bool RH_RF95::setBandWidth(float khz)
+{
+	uint8_t reg_new, reg_old;
+	
+	reg_old = spiRead(RH_RF95_REG_1D_MODEM_CONFIG1);
+    reg_new = reg_old;
+	
+	if (khz == 7.8) {
+	    // set BandWidth to 7.8KHz (clear bits 4-7) register 1D
+	    reg_new = reg_old << 4;
+	    reg_new = reg_new >> 4;
+	}
+	
+	// 20.8KHz
+	if (khz == 20.8) {
+	    // set BandWidth to 20.8KHz
+		reg_new = reg_old << 4;
+		reg_new = reg_new >> 4;
+	    reg_new = reg_new | 0x30;
+	}
+
+	// 41.7KHz
+	if (khz == 41.7) {
+		reg_new = reg_old << 4;
+		reg_new = reg_new >> 4;
+	    reg_new = reg_new | 0x50;
+	}
+	
+	if (khz == 62.5) {
+	    // set BandWidth to 62.5KHz
+		reg_new = reg_old << 4;
+		reg_new = reg_new >> 4;
+	    reg_new = reg_new | 0x60;
+	}
+	
+	if (khz == 125) {
+	    // set BandWidth to 125KHz
+	    reg_new = ((reg_old << 1) & 0xFF) >> 1;
+	}
+	
+	spiWrite(RH_RF95_REG_1D_MODEM_CONFIG1, reg_new);
+
+    return true;
+}
+
 void RH_RF95::setModeIdle()
 {
     if (_mode != RHModeIdle)
