@@ -526,14 +526,18 @@ public:
     /// different frequency ranges, and setting a frequency outside that range of your radio will probably not work
     /// \return true if the selected frquency centre is within range
     bool        setFrequency(float centre);
+	
 
 	bool        setBandWidth(float khz);
 	
 	/// set spreading factor (SF)
 	bool		setSF(int chips);
+	uint8_t     getSF();
+
 	
 	/// set CR 5-8
 	bool		setCR(int rate);
+	uint8_t     getCR();
 	
     /// If current mode is Rx or Tx changes it to Idle. If the transmitter or receiver is running, 
     /// disables them.

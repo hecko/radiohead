@@ -106,7 +106,7 @@ bool RH_RF95::init()
     setModemConfig(Bw125Cr48Sf4096); // slow and reliable?
     setPreambleLength(8); // Default is 8
     // An innocuous ISM frequency, same as RF22's
-    setFrequency(434.0);
+    setFrequency(868.0);
     // Lowish power
 	// 14 = 25mW
     setTxPower(14);
@@ -362,6 +362,18 @@ bool RH_RF95::setSF(int chips)
     return true;
 }
 
+// return spreading number (not in chips / symbol, but value from datasheet)
+uint8_t RH_RF95::getSF()
+{
+	uint8_t sf_rate;
+	uint8_t reg_val;
+	
+	reg_val = spiRead(RH_RF95_REG_1E_MODEM_CONFIG2);
+    sf_rate = reg_val >> 4;
+	
+    return sf_rate;
+}
+
 bool RH_RF95::setCR(int rate)
 {
 	uint8_t reg_new, reg_old;
@@ -396,6 +408,17 @@ bool RH_RF95::setCR(int rate)
 	spiWrite(RH_RF95_REG_1D_MODEM_CONFIG1, reg_new);
 
     return true;
+}
+
+uint8_t RH_RF95::getCR()
+{
+	uint8_t cr_rate;
+	uint8_t reg_val;
+	
+	reg_val = spiRead(RH_RF95_REG_1D_MODEM_CONFIG1);
+    cr_rate = ( reg_val >> 1 ) & 0b00000111;
+	
+    return cr_rate + 4;
 }
 
 bool RH_RF95::setBandWidth(float khz)
