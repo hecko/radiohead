@@ -466,6 +466,32 @@ bool RH_RF95::setBandWidth(float khz)
     return true;
 }
 
+uint8_t RH_RF95::getBandWidth()
+{
+	uint8_t bw;
+	uint8_t reg_val;
+	
+	reg_val = spiRead(RH_RF95_REG_1D_MODEM_CONFIG1);
+    bw = ( reg_val >> 4 );
+	
+    return bw;
+}
+
+bool RH_RF95::implicitHeader()
+{
+	uint8_t implicit;
+	uint8_t reg_val;
+	
+	reg_val = spiRead(RH_RF95_REG_1D_MODEM_CONFIG1);
+    implicit = ( reg_val << 7 ) >> 7;
+	
+	if (implicit) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
 void RH_RF95::setModeIdle()
 {
     if (_mode != RHModeIdle)

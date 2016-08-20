@@ -529,6 +529,7 @@ public:
 	
 
 	bool        setBandWidth(float khz);
+	uint8_t     getBandWidth();
 	
 	/// set spreading factor (SF)
 	bool		setSF(int chips);
@@ -538,6 +539,9 @@ public:
 	/// set CR 5-8
 	bool		setCR(int rate);
 	uint8_t     getCR();
+	
+	// is header set to be implicit?
+	bool        implicitHeader();
 	
     /// If current mode is Rx or Tx changes it to Idle. If the transmitter or receiver is running, 
     /// disables them.
