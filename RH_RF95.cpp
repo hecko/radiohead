@@ -398,8 +398,7 @@ bool RH_RF95::setCR(int rate)
 		reg_new = reg_new | 0x06;
 	}
 
-	
-    if (rate == 8) {
+        if (rate == 8) {
 		reg_new = reg_old & 0xF1;
 		reg_new = reg_new | 0x08;
 	}
@@ -440,6 +439,13 @@ bool RH_RF95::setBandWidth(float khz)
 		reg_new = reg_old << 4;
 		reg_new = reg_new >> 4;
 	    reg_new = reg_new | 0x30;
+	}
+
+	// 31.25KHz
+	if (khz == 31.25) {
+		reg_new = reg_old << 4;
+		reg_new = reg_new >> 4;
+	    reg_new = reg_new | 0x40;
 	}
 
 	// 41.7KHz

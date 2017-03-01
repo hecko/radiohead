@@ -528,12 +528,12 @@ public:
     bool        setFrequency(float centre);
 	
 
-	bool        setBandWidth(float khz);
-	uint8_t     getBandWidth();
+    bool        setBandWidth(float khz);
+    uint8_t     getBandWidth();
 	
-	/// set spreading factor (SF)
-	bool		setSF(int chips);
-	uint8_t     getSF();
+    /// set spreading factor (SF)
+    bool	setSF(int chips);
+    uint8_t     getSF();
 
 	
 	/// set CR 5-8
