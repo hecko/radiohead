@@ -339,25 +339,25 @@ bool RH_RF95::setFrequency(float centre)
 
 bool RH_RF95::setSF(int chips)
 {
-	uint8_t reg_new, reg_old;
-	
-	reg_old = spiRead(RH_RF95_REG_1E_MODEM_CONFIG2);
+    uint8_t reg_new, reg_old;
+
+    reg_old = spiRead(RH_RF95_REG_1E_MODEM_CONFIG2);
     reg_new = reg_old;
 	
-	// SF 7 -> 128 chips / symbol
-	if ((chips == 128) || (chips == 7)) {
-	    reg_new = reg_old << 4;
-	    reg_new = reg_new >> 4;
-		reg_new = reg_new | 0x70;
-	}
+    // SF 7 -> 128 chips / symbol
+    if ((chips == 128) || (chips == 7)) {
+        reg_new = reg_old << 4;
+        reg_new = reg_new >> 4;
+        reg_new = reg_new | 0x70;
+    }
 
-	if ((chips == 1024) || (chips == 10)) {
-	    reg_new = reg_old << 4;
-	    reg_new = reg_new >> 4;
-		reg_new = reg_new | 0xA0;
-	}
-	
-	spiWrite(RH_RF95_REG_1E_MODEM_CONFIG2, reg_new);
+    if ((chips == 1024) || (chips == 10)) {
+        reg_new = reg_old << 4;
+        reg_new = reg_new >> 4;
+        reg_new = reg_new | 0xA0;
+    }
+
+    spiWrite(RH_RF95_REG_1E_MODEM_CONFIG2, reg_new);
 
     return true;
 }
@@ -365,12 +365,12 @@ bool RH_RF95::setSF(int chips)
 // return spreading number (not in chips / symbol, but value from datasheet)
 uint8_t RH_RF95::getSF()
 {
-	uint8_t sf_rate;
-	uint8_t reg_val;
-	
-	reg_val = spiRead(RH_RF95_REG_1E_MODEM_CONFIG2);
+    uint8_t sf_rate;
+    uint8_t reg_val;
+
+    reg_val = spiRead(RH_RF95_REG_1E_MODEM_CONFIG2);
     sf_rate = reg_val >> 4;
-	
+
     return sf_rate;
 }
 
